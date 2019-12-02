@@ -108,7 +108,7 @@ def update_goalie():
     x_difference = goalie_pos[0] - ball_pos[0]
     y_difference = goalie_pos[1] - ball_pos[1]
     
-    if abs(x_difference) < BALL_RADIUS and abs(y_difference) < BALL_RADIUS:
+    if abs(x_difference) < 2*BALL_RADIUS and abs(y_difference) < 2*BALL_RADIUS:
         # if goalie reaches ball
         goalie_vel = [0, 0]
         ball_vel = [0, 0]
