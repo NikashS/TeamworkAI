@@ -50,12 +50,6 @@ def update_ball(passing, shooting):
     ball_pos[0] += int(ball_vel[0])
     ball_pos[1] += int(ball_vel[1])
 
-    if abs(ball_pos[0] - goalie_pos[0]) < BALL_RADIUS:
-        if abs(ball_pos[1] - goalie_pos[1]) < BALL_RADIUS:
-            goalie_vel = [0, 0]
-            ball_vel = [0, 0]
-            # define failure reward
-
     if passing:
         if ball_pos == PLAYER_ONE_POS or ball_pos == PLAYER_TWO_POS:
             # if destination player is reached, set velocity to 0
@@ -67,6 +61,7 @@ def update_ball(passing, shooting):
             # if ball reaches goal, set velocity to 0
             shooting = False
             ball_vel = [0, 0]
+            goalie_vel = [0, 0]
             # define successful goal reward
 
 def pass_action():
@@ -98,13 +93,18 @@ def update_goalie():
     global goalie_pos, goalie_vel, ball_pos, ball_vel
     x_difference = goalie_pos[0] - ball_pos[0]
     y_difference = goalie_pos[1] - ball_pos[1]
-    # update velocity towards ball position (adjust to change speed)
-    if abs(ball_pos[0] - goalie_pos[0]) < BALL_RADIUS and abs(ball_pos[1] - goalie_pos[1]) < BALL_RADIUS:
+    
+    if abs(x_difference) < BALL_RADIUS and abs(y_difference) < BALL_RADIUS:
+        # if goalie reaches ball
         goalie_vel = [0, 0]
         ball_vel = [0, 0]
         # define failure reward
     else:
-        goalie_vel = [-3 * pythonmath.cos(y_difference / x_difference), -3 * pythonmath.sin(y_difference / x_difference)]
+        # update velocity towards ball position (adjust to change speed)
+        if x_difference >= 0:
+            goalie_vel = [-3 * pythonmath.cos(y_difference / x_difference), -3 * pythonmath.sin(y_difference / x_difference)]
+        else:
+            goalie_vel = [3 * pythonmath.cos(y_difference / x_difference), 3 * pythonmath.sin(y_difference / x_difference)]
     goalie_pos = [goalie_pos[0] + goalie_vel[0], goalie_pos[1] + goalie_vel[1]]
 
 def draw(canvas):
