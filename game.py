@@ -11,8 +11,8 @@ ORANGE = (255, 140, 0)
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 BLACK = (0, 0, 0)
-WIDTH = 600
-HEIGHT = 400
+WIDTH = 1000
+HEIGHT = 800
 BALL_RADIUS = 10
 PAD_WIDTH = 10
 PAD_HEIGHT = 10
@@ -21,6 +21,8 @@ HALF_PAD_HEIGHT = PAD_HEIGHT // 2
 PLAYER_ONE_POS = [WIDTH // 4, HEIGHT // 4]
 PLAYER_TWO_POS = [WIDTH // 4, 3 * (HEIGHT // 4)]
 GOAL_POS = [WIDTH + 1 - HALF_PAD_WIDTH, HEIGHT // 2]
+GOALIE_SPEED = 7
+BALL_SPEED = 10
 
 # variables
 ball_pos = [0, 0]
@@ -69,14 +71,15 @@ def pass_action():
     global ball_pos, ball_vel, passing
     # set passing variable
     passing = True
-    if ball_pos == PLAYER_ONE_POS:
+    epsilon = BALL_RADIUS
+    if abs(ball_pos[1] - PLAYER_ONE_POS[1]) < epsilon:
         # if passing to player 2, set downward velocity
-        ball_vel = [0, 5]
-        ball_pos = [ball_pos[0], ball_pos[1]+5]
-    if ball_pos == PLAYER_TWO_POS:
+        ball_vel = [0, BALL_SPEED]
+        ball_pos = [ball_pos[0], ball_pos[1]+BALL_SPEED]
+    if abs(ball_pos[1] - PLAYER_TWO_POS[1]) < epsilon:
         # if passing to player 1, set upward velocity
-        ball_vel = [0, -5]
-        ball_pos = [ball_pos[0], ball_pos[1]-5]
+        ball_vel = [0, -BALL_SPEED]
+        ball_pos = [ball_pos[0], ball_pos[1]-BALL_SPEED]
 
 def shoot_action():
     global ball_pos, ball_vel, shooting
@@ -86,8 +89,9 @@ def shoot_action():
         shooting = True
         x_difference = GOAL_POS[0] - PLAYER_ONE_POS[0]
         y_difference = GOAL_POS[1] - PLAYER_ONE_POS[1]
+
         # update velocity towards goal, assign arbitrary increment (adjust to change speed)
-        ball_vel = [int(x_difference / 75), int(y_difference / 75)]
+        ball_vel = [int(x_difference / 50), int(y_difference / 50)]
         ball_pos = [ball_pos[0] + ball_vel[0], ball_pos[1] + ball_vel[1]]
     if ball_pos == PLAYER_TWO_POS:
         # only allow shot if player has ball
@@ -96,7 +100,7 @@ def shoot_action():
         x_difference = GOAL_POS[0] - PLAYER_TWO_POS[0]
         y_difference = GOAL_POS[1] - PLAYER_TWO_POS[1]
         # update velocity towards goal, assign arbitrary increment (adjust to change speed)
-        ball_vel = [int(x_difference / 75), int(y_difference / 75)]
+        ball_vel = [int(x_difference / 100), int(y_difference / 100)]
         ball_pos = [ball_pos[0] + ball_vel[0], ball_pos[1] + ball_vel[1]]
 
 def update_goalie():
@@ -111,13 +115,14 @@ def update_goalie():
         # define failure reward
         initialize()
     elif x_difference == 0.0:
-        direction = -1 if y_difference >= 0 else 1
-        goalie_vel = [0, 3 * direction]
+        y_direction = -1 if y_difference >= 0 else 1
+        goalie_vel = [0, GOALIE_SPEED * y_direction]
     else:
         # update velocity towards ball position (adjust to change speed)
-        direction = 1 if x_difference >= 0 else -1
-        goalie_vel = [-3 * pythonmath.cos(y_difference / x_difference) * direction, 
-                      -3 * pythonmath.sin(y_difference / x_difference) * direction]
+        x_direction = -1 if x_difference >= 0 else 1
+        y_direction = -1 if y_difference >= 0 else 1
+        goalie_vel = [GOALIE_SPEED * abs(pythonmath.cos(y_difference / x_difference)) * x_direction, 
+                      GOALIE_SPEED * abs(pythonmath.sin(y_difference / x_difference)) * y_direction]
     goalie_pos = [goalie_pos[0] + goalie_vel[0], goalie_pos[1] + goalie_vel[1]]
 
 def draw(canvas):
@@ -181,4 +186,4 @@ while True:
             sys.exit()
 
     pygame.display.update()
-    fps.tick(50)
+    fps.tick(500)
