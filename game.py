@@ -1,6 +1,7 @@
 import random
 import pygame
 import sys
+import math as pythonmath
 from pygame import *
 from easygui import *
 
@@ -49,6 +50,12 @@ def update_ball(passing, shooting):
     ball_pos[0] += int(ball_vel[0])
     ball_pos[1] += int(ball_vel[1])
 
+    if abs(ball_pos[0] - goalie_pos[0]) < BALL_RADIUS:
+        if abs(ball_pos[1] - goalie_pos[1]) < BALL_RADIUS:
+            goalie_vel = [0, 0]
+            ball_vel = [0, 0]
+            # define failure reward
+
     if passing:
         if ball_pos == PLAYER_ONE_POS or ball_pos == PLAYER_TWO_POS:
             # if destination player is reached, set velocity to 0
@@ -89,9 +96,15 @@ def shoot_action():
 
 def update_goalie():
     global goalie_pos, goalie_vel, ball_pos, ball_vel
-    x_difference = ball_pos[0] - GOAL_POS[0]
-    y_difference = ball_pos[1] - GOAL_POS[1]
-    goalie_vel = [int(x_difference / 100), int(y_difference / 100)]
+    x_difference = goalie_pos[0] - ball_pos[0]
+    y_difference = goalie_pos[1] - ball_pos[1]
+    # update velocity towards ball position (adjust to change speed)
+    if abs(ball_pos[0] - goalie_pos[0]) < BALL_RADIUS and abs(ball_pos[1] - goalie_pos[1]) < BALL_RADIUS:
+        goalie_vel = [0, 0]
+        ball_vel = [0, 0]
+        # define failure reward
+    else:
+        goalie_vel = [-3 * pythonmath.cos(y_difference / x_difference), -3 * pythonmath.sin(y_difference / x_difference)]
     goalie_pos = [goalie_pos[0] + goalie_vel[0], goalie_pos[1] + goalie_vel[1]]
 
 def draw(canvas):
@@ -121,6 +134,7 @@ def draw(canvas):
     pygame.draw.circle(canvas, WHITE, PLAYER_TWO_POS, 15, 0)
 
     # draw goalie
+    goalie_pos = [int(goalie_pos[0]), int(goalie_pos[1])]
     pygame.draw.circle(canvas, RED, goalie_pos, 15, 0)
 
     # draw ball
@@ -154,4 +168,4 @@ while True:
             sys.exit()
 
     pygame.display.update()
-    fps.tick(60)
+    fps.tick(1000)
