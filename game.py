@@ -101,10 +101,9 @@ def update_goalie():
         # define failure reward
     else:
         # update velocity towards ball position (adjust to change speed)
-        if x_difference >= 0:
-            goalie_vel = [-3 * pythonmath.cos(y_difference / x_difference), -3 * pythonmath.sin(y_difference / x_difference)]
-        else:
-            goalie_vel = [3 * pythonmath.cos(y_difference / x_difference), 3 * pythonmath.sin(y_difference / x_difference)]
+        direction = 1 if x_difference >= 0 else -1
+        goalie_vel = [-3 * pythonmath.cos(y_difference / x_difference) * direction, 
+                      -3 * pythonmath.sin(y_difference / x_difference) * direction]
     goalie_pos = [goalie_pos[0] + goalie_vel[0], goalie_pos[1] + goalie_vel[1]]
 
 def draw(canvas):
