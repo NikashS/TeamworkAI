@@ -62,6 +62,7 @@ def update_ball(passing, shooting):
             shooting = False
             ball_vel = [0, 0]
             goalie_vel = [0, 0]
+            initialize()
             # define successful goal reward
 
 def pass_action():
@@ -108,6 +109,10 @@ def update_goalie():
         goalie_vel = [0, 0]
         ball_vel = [0, 0]
         # define failure reward
+        initialize()
+    elif x_difference == 0.0:
+        direction = -1 if y_difference >= 0 else 1
+        goalie_vel = [0, 3 * direction]
     else:
         # update velocity towards ball position (adjust to change speed)
         direction = 1 if x_difference >= 0 else -1
@@ -176,4 +181,4 @@ while True:
             sys.exit()
 
     pygame.display.update()
-    fps.tick(1000)
+    fps.tick(50)
