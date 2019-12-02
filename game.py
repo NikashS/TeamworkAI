@@ -79,12 +79,21 @@ def pass_action():
 
 def shoot_action():
     global ball_pos, ball_vel, shooting
-    if ball_pos == PLAYER_ONE_POS or ball_pos == PLAYER_TWO_POS:
+    if ball_pos == PLAYER_ONE_POS:
         # only allow shot if player has ball
         # set shooting variable
         shooting = True
-        x_difference = GOAL_POS[0] - ball_pos[0]
-        y_difference = GOAL_POS[1] - ball_pos[1]
+        x_difference = GOAL_POS[0] - PLAYER_ONE_POS[0]
+        y_difference = GOAL_POS[1] - PLAYER_ONE_POS[1]
+        # update velocity towards goal, assign arbitrary increment (adjust to change speed)
+        ball_vel = [int(x_difference / 75), int(y_difference / 75)]
+        ball_pos = [ball_pos[0] + ball_vel[0], ball_pos[1] + ball_vel[1]]
+    if ball_pos == PLAYER_TWO_POS:
+        # only allow shot if player has ball
+        # set shooting variable
+        shooting = True
+        x_difference = GOAL_POS[0] - PLAYER_TWO_POS[0]
+        y_difference = GOAL_POS[1] - PLAYER_TWO_POS[1]
         # update velocity towards goal, assign arbitrary increment (adjust to change speed)
         ball_vel = [int(x_difference / 75), int(y_difference / 75)]
         ball_pos = [ball_pos[0] + ball_vel[0], ball_pos[1] + ball_vel[1]]
