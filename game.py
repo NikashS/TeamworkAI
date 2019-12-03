@@ -107,25 +107,23 @@ def shoot_action():
 
 def update_goalie():
     global goalie_pos, goalie_vel, ball_pos, ball_vel
-    x_difference = goalie_pos[0] - ball_pos[0]
-    y_difference = goalie_pos[1] - ball_pos[1]
-    
-    if abs(x_difference) < 2*BALL_RADIUS and abs(y_difference) < 2*BALL_RADIUS:
+    dx, dy = goalie_pos[0] - ball_pos[0], goalie_pos[1] - ball_pos[1]
+    if abs(dx) < 2*BALL_RADIUS and abs(dy) < 2*BALL_RADIUS:
         # if goalie reaches ball
         goalie_vel = [0, 0]
-        ball_vel = [0, 0]
-        # define failure reward
+        ball_vel   = [0, 0]
         initialize()
-    elif x_difference == 0.0:
-        y_direction = -1 if y_difference >= 0 else 1
-        goalie_vel = [0, GOALIE_SPEED * y_direction]
     else:
         # update velocity towards ball position (adjust to change speed)
-        x_direction = -1 if x_difference >= 0 else 1
-        y_direction = -1 if y_difference >= 0 else 1
-        goalie_vel = [GOALIE_SPEED * abs(pythonmath.cos(y_difference / x_difference)) * x_direction, 
-                      GOALIE_SPEED * abs(pythonmath.sin(y_difference / x_difference)) * y_direction]
-    goalie_pos = [goalie_pos[0] + goalie_vel[0], goalie_pos[1] + goalie_vel[1]]
+        xdir = -1 if dx >= 0 else 1
+        ydir = -1 if dy >= 0 else 1
+        if dx == 0:
+            v_x, v_y = 0, GOALIE_SPEED * ydir
+        else:
+            v_x, v_y = GOALIE_SPEED * abs(pythonmath.cos(dy/dx)) * xdir, \
+                       GOALIE_SPEED * abs(pythonmath.sin(dy/dx)) * ydir
+        goalie_vel = [v_x, v_y]
+    goalie_pos = [goalie_pos[0]+goalie_vel[0], goalie_pos[1]+goalie_vel[1]]
 
 def draw(canvas):
     global ball_pos, goalie_pos
