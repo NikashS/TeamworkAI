@@ -158,6 +158,10 @@ def draw(canvas):
     # draw ball
     pygame.draw.circle(canvas, ORANGE, ball_pos, 10, 0)
 
+def quitgame():
+    pygame.display.quit()
+    pygame.quit()
+    sys.exit()
 
 def keydown(event):
     # if "p" key is pressed, execute pass action
@@ -166,6 +170,9 @@ def keydown(event):
     # if "s" key is pressed, execute shoot action
     if event.key == K_s:
         shoot_action()
+    # if "x" key is pressed, exit game
+    if event.key == K_x:
+        quitgame()
 
 # initialize position variables
 initialize()
@@ -181,9 +188,7 @@ while True:
         if event.type == KEYDOWN:
             keydown(event)
         elif event.type == QUIT:
-            pygame.display.quit()
-            pygame.quit()
-            sys.exit()
+            quitgame()
 
     pygame.display.update()
-    fps.tick(500)
+    fps.tick(50)
