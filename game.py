@@ -46,6 +46,15 @@ def initialize():
     ball_pos = PLAYER_ONE_POS
     ball_vel = [0, 0]
 
+def possession():
+    # returns player position who is in possession of the ball
+    pos = None
+    if ball_pos == PLAYER_ONE_POS:
+        pos = PLAYER_ONE_POS
+    elif ball_pos == PLAYER_TWO_POS:
+        pos = PLAYER_TWO_POS
+    return pos
+
 def update_ball(passing, shooting):
     # update ball position
     global ball_pos, ball_vel
@@ -83,24 +92,17 @@ def pass_action():
 
 def shoot_action():
     global ball_pos, ball_vel, shooting
-    if ball_pos == PLAYER_ONE_POS:
+    # returns null if no one is possession of the ball
+    player_position = possession()
+    if player_position:
         # only allow shot if player has ball
         # set shooting variable
         shooting = True
-        x_difference = GOAL_POS[0] - PLAYER_ONE_POS[0]
-        y_difference = GOAL_POS[1] - PLAYER_ONE_POS[1]
+        x_difference = GOAL_POS[0] - player_position[0]
+        y_difference = GOAL_POS[1] - player_position[1]
 
         # update velocity towards goal, assign arbitrary increment (adjust to change speed)
         ball_vel = [int(x_difference / 50), int(y_difference / 50)]
-        ball_pos = [ball_pos[0] + ball_vel[0], ball_pos[1] + ball_vel[1]]
-    if ball_pos == PLAYER_TWO_POS:
-        # only allow shot if player has ball
-        # set shooting variable
-        shooting = True
-        x_difference = GOAL_POS[0] - PLAYER_TWO_POS[0]
-        y_difference = GOAL_POS[1] - PLAYER_TWO_POS[1]
-        # update velocity towards goal, assign arbitrary increment (adjust to change speed)
-        ball_vel = [int(x_difference / 100), int(y_difference / 100)]
         ball_pos = [ball_pos[0] + ball_vel[0], ball_pos[1] + ball_vel[1]]
 
 def update_goalie():
