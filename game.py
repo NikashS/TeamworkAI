@@ -49,9 +49,10 @@ def initialize():
 def possession():
     # returns player position who is in possession of the ball
     pos = None
-    if ball_pos == PLAYER_ONE_POS:
+    epsilon = BALL_RADIUS
+    if abs(ball_pos[1] - PLAYER_ONE_POS[1]) < epsilon:
         pos = PLAYER_ONE_POS
-    elif ball_pos == PLAYER_TWO_POS:
+    elif abs(ball_pos[1] - PLAYER_TWO_POS[1]) < epsilon:
         pos = PLAYER_TWO_POS
     return pos
 
@@ -71,8 +72,6 @@ def update_ball(passing, shooting):
         if abs(ball_pos[0] - GOAL_POS[0]) < BALL_RADIUS:
             # if ball reaches goal, set velocity to 0
             shooting = False
-            ball_vel = [0, 0]
-            goalie_vel = [0, 0]
             initialize()
             # define successful goal reward
 
@@ -110,8 +109,6 @@ def update_goalie():
     dx, dy = goalie_pos[0] - ball_pos[0], goalie_pos[1] - ball_pos[1]
     if abs(dx) < 2*BALL_RADIUS and abs(dy) < 2*BALL_RADIUS:
         # if goalie reaches ball
-        goalie_vel = [0, 0]
-        ball_vel   = [0, 0]
         initialize()
     else:
         # update velocity towards ball position (adjust to change speed)
