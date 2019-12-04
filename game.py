@@ -246,8 +246,13 @@ def getAction(state):
         chosen_action = computeActionFromQValues(state)
     return chosen_action
 
-def update(state, action, nextState, reward):
-    return
+def update(state, action, next_state, reward):
+    global valid_actions, alpha
+    updated = ((1 - alpha) * getQValue(state, action)) + (alpha * (reward + computeValueFromQValues(next_state)))
+    if PLAYER_ONE_POS == possession():
+        one_values[(state, action)] = updated
+    else:
+        two_values[(state, action)] = updated
 
 # initialize position variables
 initialize()
