@@ -2,6 +2,7 @@ import random
 import pygame
 import sys
 import math as pythonmath
+from player import SoccerAgent
 from pygame import *
 from easygui import *
 
@@ -31,41 +32,20 @@ goalie_pos = [0, 0]
 goalie_vel = [0, 0]
 passing = False
 shooting = False
+p1_passes = 0
+p2_passes = 0
 
-# q learning variables
-
-# (state, action): q-value
-# True state means has ball
-one_values = {
-    (True, "pass"): 0.0,
-    (True, "shoot"): 0.0,
-    (True, "hold"): 0.0,
-    (False, "wait"): 0.0
-}
-two_values = {
-    (True, "pass"): 0.0,
-    (True, "shoot"): 0.0,
-    (True, "hold"): 0.0,
-    (False, "wait"): 0.0
-}
-transitions = {
-    (True, "pass"): False,
-    (True, "shoot"): False,
-    (True, "hold"): True,
-    (False, "wait"): False
-}
-
-# state: valid actions
-# True state means has ball
-valid_actions = {
-    True: ["pass", "shoot", "hold"],
-    False: ["wait"]
-}
+PASS_REWARD = 50.0
+GOAL_REWARD = 100.0
+FAIL_REWARD = -100.0
+WAIT_REWARD = 0.0
+HOLD_REWARD = 10.0
+PASS_SHOT_REWARD = 1000.0
 
 # randomness value
-epsilon = 0.1
+epsilon = 0.01
 # learning rate
-alpha = 0.2
+alpha = 0.3
 
 pygame.init()
 fps = pygame.time.Clock()
@@ -80,6 +60,9 @@ def initialize():
     # initialize ball at player one with no velocity
     ball_pos = PLAYER_ONE_POS
     ball_vel = [0, 0]
+    # reset pass count
+    p1_passes = 0
+    p2_passes = 0
 
 def possession():
     # returns player position who is in possession of the ball
@@ -97,20 +80,40 @@ def ball_state():
 
     epsilon = BALL_RADIUS
     if abs(ball_pos[1] - PLAYER_ONE_POS[1]) < epsilon:
-        return "player"
+        return "player_1"
     if abs(ball_pos[1] - PLAYER_TWO_POS[1]) < epsilon:
-        return "player"
+        return "player_2"
     dx, dy = goalie_pos[0] - ball_pos[0], goalie_pos[1] - ball_pos[1]
     if abs(dx) < 2*BALL_RADIUS and abs(dy) < 2*epsilon:
         return "goalie"
     if abs(ball_pos[0] - GOAL_POS[0]) < epsilon:
         return "goal"
+    return None
 
-def update_ball(passing, shooting):
+def dist(pos1, pos2):
+    return round(((pos2[0] - pos1[0])**2 + (pos2[1] - pos1[1])**2)**0.5, 1)
+
+def update_ball(passing, shooting, hold):
     # update ball position
-    global ball_pos, ball_vel
+    global ball_pos, ball_vel, goalie_pos
     ball_pos[0] += int(ball_vel[0])
     ball_pos[1] += int(ball_vel[1])
+
+    if update_goalie():
+        return ('TERMINAL_STATE', FAIL_REWARD)
+
+    d1 = dist(goalie_pos, PLAYER_ONE_POS)
+    d2 = dist(goalie_pos, PLAYER_TWO_POS)
+    # current player chooses to hold
+    if hold:
+        if ball_state() == "player_1":
+            s1 = (True, d1, p1_passes)
+            s2 = (False, d2, p2_passes)
+            return (s1, s2) , HOLD_REWARD
+        elif ball_state() == "player_2":
+            s1 = (False, d1, p1_passes)
+            s2 = (True, d2, p2_passes)
+            return (s1, s2) , HOLD_REWARD
 
     if passing:
         if ball_pos == PLAYER_ONE_POS or ball_pos == PLAYER_TWO_POS:
@@ -118,12 +121,24 @@ def update_ball(passing, shooting):
             passing = False
             ball_vel = [0, 0]
             # define successful pass reward
+            if ball_pos == PLAYER_ONE_POS:
+                s1 = (True, d1, p1_passes)
+                s2 = (False, d2, p2_passes+1)
+                return (s1, s2), PASS_REWARD
+            # player two
+            s1 = (False, d1, p1_passes+1)
+            s2 = (True, d2, p2_passes)
+            return (s1, s2), PASS_REWARD
+
     if shooting:
         if abs(ball_pos[0] - GOAL_POS[0]) < BALL_RADIUS:
             # if ball reaches goal, set velocity to 0
             shooting = False
             initialize()
             # define successful goal reward
+            return ('TERMINAL_STATE', GOAL_REWARD)
+    
+    return None
 
 def pass_action():
     global ball_pos, ball_vel, passing
@@ -160,6 +175,7 @@ def update_goalie():
     if abs(dx) < 2*BALL_RADIUS and abs(dy) < 2*BALL_RADIUS:
         # if goalie reaches ball
         initialize()
+        return True
     else:
         # update velocity towards ball position (adjust to change speed)
         xdir = -1 if dx >= 0 else 1
@@ -171,6 +187,8 @@ def update_goalie():
                        GOALIE_SPEED * abs(pythonmath.sin(dy/dx)) * ydir
         goalie_vel = [v_x, v_y]
     goalie_pos = [goalie_pos[0]+goalie_vel[0], goalie_pos[1]+goalie_vel[1]]
+    # goalie has not reached the ball
+    return False
 
 def draw(canvas):
     global ball_pos, goalie_pos
@@ -221,74 +239,96 @@ def keydown(event):
     if event.key == K_x:
         quitgame()
 
-# q learning methods
-
-def getQValue(state, action):
-    global one_values, two_values
-    if PLAYER_ONE_POS == possession():
-        return one_values[(state, action)]
-    else:
-        return two_values[(state, action)]
-
-def computeValueFromQValues(state):
-    global valid_actions
-    actions = valid_actions[state]
-    max_value = float("-inf")
-    for action in actions:
-        if getQValue(state, action) > max_value:
-            max_value = getQValue(state, action)
-    return max_value
-
-def computeActionFromQValues(state):
-    global valid_actions
-    actions = valid_actions[state]
-    max_value = float("-inf")
-    best_action = None
-    for action in actions:
-        if getQValue(state, action) > max_value:
-            max_value = getQValue(state, action)
-            best_action = action
-    return best_action
-
-def getAction(state):
-    global valid_actions, epsilon
-    actions = valid_actions[state]
-    chosen_action = None
-    if random.random() < epsilon:
-        chosen_action = random.choice(actions)
-    else:
-        chosen_action = computeActionFromQValues(state)
-    return chosen_action
-
-def update(state, action, next_state, reward):
-    global valid_actions, alpha
-    updated = ((1 - alpha) * getQValue(state, action)) + (alpha * (reward + computeValueFromQValues(next_state)))
-    if PLAYER_ONE_POS == possession():
-        one_values[(state, action)] = updated
-    else:
-        two_values[(state, action)] = updated
-
 # initialize position variables
 initialize()
 
 # execute until program is quit
+"""
+State definition for each player = (
+    <boolean> has possession,
+    <float>   distance from goalie
+)
+"""
+player1 = SoccerAgent(playerNum=1)
+player2 = SoccerAgent(playerNum=2)
+delay = 100
+last_tick = 0
+
+shots = 0
+goals = 0
+
 while True:
     draw(window)
-    update_ball(passing, shooting)
-    update_goalie()
-
-    # if ball_state() == "player":
-    #     update()
-
-    # if ball_state() == "goal":
-    #     update()
-
+    """BEGIN EPISODIC CODE"""
     # if key is pressed or game is exited
     for event in pygame.event.get():
         if event.type == KEYDOWN:
             keydown(event)
         elif event.type == QUIT:
             quitgame()
+    
+    # # time tracker
+    # tick = pygame.time.get_ticks()
+    # timedelta = tick - last_tick
+    # last_tick = tick
+
+    # if timedelta < delay:
+    #     pass
+    
+    # get game state
+    if ball_state() == "player_1":
+        s1 = (True, dist(goalie_pos, PLAYER_ONE_POS))
+        s2 = (False, dist(goalie_pos, PLAYER_TWO_POS))
+    elif ball_state() == "player_2":
+        s1 = (False, dist(goalie_pos, PLAYER_ONE_POS))
+        s2 = (True, dist(goalie_pos, PLAYER_TWO_POS))
+    game_state = (s1, s2)
+
+    # determine action
+    action1 = player1.getAction(game_state[0])
+    action2 = player2.getAction(game_state[1])
+    action  = action1 if action1 != "wait" else action2
+    hold = False
+    # perform action 
+    if possession() is not None:
+        if action == "shoot":
+            shoot_action()
+            shots += 1
+        elif action == "pass" and previous_action is not None and previous_action is not "shoot":
+            pass_action()
+        else:
+            hold = True
+    
+    previous_action = action
+    step = update_ball(passing, shooting, hold)
+    if step is not None:
+        # reset game, terminal state
+        if step[0] == "TERMINAL_STATE":
+            reward = step[1]
+            s1 = (False, dist(goalie_pos, PLAYER_ONE_POS), p1_passes)
+            s2 = (False, dist(goalie_pos, PLAYER_TWO_POS), p2_passes)
+            next_state = (s1, s2)
+            player1.update(game_state[0], action1, next_state[0], reward)
+            player2.update(game_state[1], action2, next_state[1], reward)
+            if reward == GOAL_REWARD:
+                goals += 1
+            initialize()
+        # continue
+        next_state, reward = step
+
+    else:
+        next_state = game_state
+        reward = WAIT_REWARD
+    """END EPISODIC CODE"""
+    
+    # update
+    try:
+        player1.update(game_state[0], action1, next_state[0], reward)
+        player2.update(game_state[1], action2, next_state[1], reward)
+    except Exception as e:
+        print(game_state, action2, next_state, e)
 
     pygame.display.update()
-    fps.tick(50)
+    if shots > 0:
+        print(float(goals/shots))
+    fps.tick(5000)
