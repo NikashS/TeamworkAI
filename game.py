@@ -92,6 +92,20 @@ def possession():
         pos = PLAYER_TWO_POS
     return pos
 
+def ball_state():
+    global ball_pos, goalie_pos
+
+    epsilon = BALL_RADIUS
+    if abs(ball_pos[1] - PLAYER_ONE_POS[1]) < epsilon:
+        return "player"
+    if abs(ball_pos[1] - PLAYER_TWO_POS[1]) < epsilon:
+        return "player"
+    dx, dy = goalie_pos[0] - ball_pos[0], goalie_pos[1] - ball_pos[1]
+    if abs(dx) < 2*BALL_RADIUS and abs(dy) < 2*epsilon:
+        return "goalie"
+    if abs(ball_pos[0] - GOAL_POS[0]) < epsilon:
+        return "goal"
+
 def update_ball(passing, shooting):
     # update ball position
     global ball_pos, ball_vel
@@ -262,6 +276,12 @@ while True:
     draw(window)
     update_ball(passing, shooting)
     update_goalie()
+
+    # if ball_state() == "player":
+    #     update()
+
+    # if ball_state() == "goal":
+    #     update()
 
     # if key is pressed or game is exited
     for event in pygame.event.get():
