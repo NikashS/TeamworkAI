@@ -32,6 +32,41 @@ goalie_vel = [0, 0]
 passing = False
 shooting = False
 
+# q learning variables
+
+# (state, action): q-value
+# True state means has ball
+one_values = {
+    (True, "pass"): 0.0,
+    (True, "shoot"): 0.0,
+    (True, "hold"): 0.0,
+    (False, "wait"): 0.0
+}
+two_values = {
+    (True, "pass"): 0.0,
+    (True, "shoot"): 0.0,
+    (True, "hold"): 0.0,
+    (False, "wait"): 0.0
+}
+transitions = {
+    (True, "pass"): False,
+    (True, "shoot"): False,
+    (True, "hold"): True,
+    (False, "wait"): False
+}
+
+# state: valid actions
+# True state means has ball
+valid_actions = {
+    True: ["pass", "shoot", "hold"],
+    False: ["wait"]
+}
+
+# randomness value
+epsilon = 0.1
+# learning rate
+alpha = 0.2
+
 pygame.init()
 fps = pygame.time.Clock()
 window = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
@@ -48,6 +83,7 @@ def initialize():
 
 def possession():
     # returns player position who is in possession of the ball
+    global ball_pos
     pos = None
     epsilon = BALL_RADIUS
     if abs(ball_pos[1] - PLAYER_ONE_POS[1]) < epsilon:
@@ -170,6 +206,48 @@ def keydown(event):
     # if "x" key is pressed, exit game
     if event.key == K_x:
         quitgame()
+
+# q learning methods
+
+def getQValue(state, action):
+    global one_values, two_values
+    if PLAYER_ONE_POS == possession():
+        return one_values[(state, action)]
+    else:
+        return two_values[(state, action)]
+
+def computeValueFromQValues(state):
+    global valid_actions
+    actions = valid_actions[state]
+    max_value = float("-inf")
+    for action in actions:
+        if getQValue(state, action) > max_value:
+            max_value = getQValue(state, action)
+    return max_value
+
+def computeActionFromQValues(state):
+    global valid_actions
+    actions = valid_actions[state]
+    max_value = float("-inf")
+    best_action = None
+    for action in actions:
+        if getQValue(state, action) > max_value:
+            max_value = getQValue(state, action)
+            best_action = action
+    return best_action
+
+def getAction(state):
+    global valid_actions, epsilon
+    actions = valid_actions[state]
+    chosen_action = None
+    if random.random() < epsilon:
+        chosen_action = random.choice(actions)
+    else:
+        chosen_action = computeActionFromQValues(state)
+    return chosen_action
+
+def update(state, action, nextState, reward):
+    return
 
 # initialize position variables
 initialize()
