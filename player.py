@@ -4,8 +4,8 @@ import random
 class SoccerAgent:
     def __init__(self, playerNum):
         self.Qvalues = dict([])
-        self.epsilon = 0.1
-        self.alpha   = 0.2
+        self.epsilon = 0.01
+        self.alpha   = 0.4
         self.episodeRewards = 0.0
         self.discount = 1.0
         # 1 or 2

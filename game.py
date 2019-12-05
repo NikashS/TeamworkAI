@@ -53,7 +53,7 @@ window = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
 pygame.display.set_caption("Soccer!")
 
 def initialize():
-    global goalie_pos, ball_pos, ball_vel
+    global goalie_pos, ball_pos, ball_vel, p1_passes, p2_passes
     # initialize goalie at goal with no velocity
     goalie_pos = GOAL_POS
     goalie_vel = [0, 0]
@@ -91,11 +91,21 @@ def ball_state():
     return None
 
 def dist(pos1, pos2):
-    return round(((pos2[0] - pos1[0])**2 + (pos2[1] - pos1[1])**2)**0.5, 1)
+    return int(((pos2[0] - pos1[0])**2 + (pos2[1] - pos1[1])**2)**0.5)
+
+def get_player_state(n = 1):
+    global PLAYER_ONE_POS, PLAYER_TWO_POS, p1_passes, p2_passes
+    pos = PLAYER_ONE_POS if n == 1 else PLAYER_TWO_POS
+    passes = p1_passes if n == 1 else p2_passes
+    return (
+        ball_state() == ("player_" + str(n)), 
+        dist(pos, goalie_pos),
+        passes
+        )
 
 def update_ball(passing, shooting, hold):
     # update ball position
-    global ball_pos, ball_vel, goalie_pos
+    global ball_pos, ball_vel, goalie_pos, p1_passes, p2_passes
     ball_pos[0] += int(ball_vel[0])
     ball_pos[1] += int(ball_vel[1])
 
@@ -104,29 +114,33 @@ def update_ball(passing, shooting, hold):
 
     d1 = dist(goalie_pos, PLAYER_ONE_POS)
     d2 = dist(goalie_pos, PLAYER_TWO_POS)
+    player_states = get_player_state(n=1), get_player_state(n=2)
     # current player chooses to hold
     if hold:
-        if ball_state() == "player_1":
-            s1 = (True, d1, p1_passes)
-            s2 = (False, d2, p2_passes)
-            return (s1, s2) , HOLD_REWARD
-        elif ball_state() == "player_2":
-            s1 = (False, d1, p1_passes)
-            s2 = (True, d2, p2_passes)
-            return (s1, s2) , HOLD_REWARD
+        return player_states, HOLD_REWARD
+        # if ball_state() == "player_1":
+        #     s1 = (True, d1, p1_passes)
+        #     s2 = (False, d2, p2_passes)
+        #     return (s1, s2) , HOLD_REWARD
+        # elif ball_state() == "player_2":
+        #     s1 = (False, d1, p1_passes)
+        #     s2 = (True, d2, p2_passes)
+        #     return (s1, s2) , HOLD_REWARD
 
     if passing:
         if ball_pos == PLAYER_ONE_POS or ball_pos == PLAYER_TWO_POS:
             # if destination player is reached, set velocity to 0
             passing = False
             ball_vel = [0, 0]
-            # define successful pass reward
+            # must update passes
             if ball_pos == PLAYER_ONE_POS:
+                p2_passes += 1
                 s1 = (True, d1, p1_passes)
-                s2 = (False, d2, p2_passes+1)
+                s2 = (False, d2, p2_passes)
                 return (s1, s2), PASS_REWARD
             # player two
-            s1 = (False, d1, p1_passes+1)
+            p1_passes += 1
+            s1 = (False, d1, p1_passes)
             s2 = (True, d2, p2_passes)
             return (s1, s2), PASS_REWARD
 
@@ -134,9 +148,10 @@ def update_ball(passing, shooting, hold):
         if abs(ball_pos[0] - GOAL_POS[0]) < BALL_RADIUS:
             # if ball reaches goal, set velocity to 0
             shooting = False
-            initialize()
+            if p1_passes > 0 or p2_passes > 0:
+                return 'TERMINAL_STATE', PASS_SHOT_REWARD
             # define successful goal reward
-            return ('TERMINAL_STATE', GOAL_REWARD)
+            return 'TERMINAL_STATE', GOAL_REWARD
     
     return None
 
@@ -256,6 +271,7 @@ last_tick = 0
 
 shots = 0
 goals = 0
+previous_action = None
 
 while True:
     draw(window)
@@ -274,14 +290,7 @@ while True:
 
     # if timedelta < delay:
     #     pass
-    
-    # get game state
-    if ball_state() == "player_1":
-        s1 = (True, dist(goalie_pos, PLAYER_ONE_POS))
-        s2 = (False, dist(goalie_pos, PLAYER_TWO_POS))
-    elif ball_state() == "player_2":
-        s1 = (False, dist(goalie_pos, PLAYER_ONE_POS))
-        s2 = (True, dist(goalie_pos, PLAYER_TWO_POS))
+    s1, s2 = get_player_state(n=1), get_player_state(n=2)
     game_state = (s1, s2)
 
     # determine action
@@ -294,7 +303,7 @@ while True:
         if action == "shoot":
             shoot_action()
             shots += 1
-        elif action == "pass" and previous_action is not None and previous_action is not "shoot":
+        elif action == "pass" and previous_action and previous_action != "shoot":
             pass_action()
         else:
             hold = True
@@ -313,22 +322,20 @@ while True:
             if reward == GOAL_REWARD:
                 goals += 1
             initialize()
-        # continue
-        next_state, reward = step
-
-    else:
-        next_state = game_state
-        reward = WAIT_REWARD
-    """END EPISODIC CODE"""
+    #         pass
+    #     # continue
+    #     next_state, reward = step
+    # else:
+    #     next_state = game_state
+    #     reward = WAIT_REWARD
+    # """END EPISODIC CODE"""
     
-    # update
-    try:
-        player1.update(game_state[0], action1, next_state[0], reward)
-        player2.update(game_state[1], action2, next_state[1], reward)
-    except Exception as e:
-        print(game_state, action2, next_state, e)
+    # # update
+    # try:
+    #     player1.update(game_state[0], action1, next_state[0], reward)
+    #     player2.update(game_state[1], action2, next_state[1], reward)
+    # except Exception as e:
+    #     print(game_state, action2, next_state, e)
 
     pygame.display.update()
-    if shots > 0:
-        print(float(goals/shots))
-    fps.tick(5000)
+    fps.tick(100)
