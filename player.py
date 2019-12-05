@@ -12,7 +12,7 @@ class SoccerAgent:
         self.id = playerNum
     
     def getLegalActions(self, state):
-        if state:
+        if state[0]:
             return ["pass", "shoot", "hold"]
         return ["wait"]
 

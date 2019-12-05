@@ -296,6 +296,7 @@ while True:
     # determine action
     action1 = player1.getAction(game_state[0])
     action2 = player2.getAction(game_state[1])
+    print(action1, action2)
     action  = action1 if action1 != "wait" else action2
     hold = False
     # perform action 
