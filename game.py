@@ -266,7 +266,7 @@ previous_action = None
 # player states
 p1_shooting, p2_shooting = False, False
 p1_passing , p2_passing  = False, False
-epochs, Ns, currentN = 0, [5, 10, 25, 50, 100], 0
+epochs, Ns, currentN = 0, [5, 10, 25, 50, 100, 500], 0
 peek = None
 prev_state = (None, None)
 
@@ -360,7 +360,7 @@ while True:
                 epochs = 0
                 currentN += 1
                 # print results
-                print("{0:.3f}".format(float(goals)/plays))
+                print(str(Ns[currentN]) + " epochs: {0:.3f}".format(float(goals)/plays))
                 goals = 0
                 plays = 0
             initialize()
