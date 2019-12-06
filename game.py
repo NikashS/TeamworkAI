@@ -49,6 +49,7 @@ epsilon = 0.01
 # learning rate
 alpha = 0.3
 
+
 fps = pygame.time.Clock()
 pygame.init()
 if DISPLAY:
@@ -265,7 +266,7 @@ previous_action = None
 # player states
 p1_shooting, p2_shooting = False, False
 p1_passing , p2_passing  = False, False
-epochs, N = 0, 30
+epochs, Ns, currentN = 0, [5, 10, 25, 50, 100], 0
 peek = None
 prev_state = (None, None)
 
@@ -352,11 +353,16 @@ while True:
                 # write to file
                 data_file.write('0\n')
             epochs += 1
-            if epochs >= N:
+            if currentN == len(Ns):
+                quitgame()
+            if epochs >= Ns[currentN]:
                 # reset
                 epochs = 0
+                currentN += 1
                 # print results
                 print("{0:.3f}".format(float(goals)/plays))
+                goals = 0
+                plays = 0
             initialize()
         # basic 'living' reward (keeping the ball alive)
         else:
