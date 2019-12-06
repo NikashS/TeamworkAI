@@ -32,28 +32,31 @@ goalie_pos = [0, 0]
 goalie_vel = [0, 0]
 passing = False
 shooting = False
-p1_passes = 0
-p2_passes = 0
+p1_num_passes = 0
+p2_num_passes = 0
 
 PASS_REWARD = 50.0
-GOAL_REWARD = 100.0
-FAIL_REWARD = -100.0
+GOAL_REWARD = 500.0
+FAIL_REWARD = -500.0
 WAIT_REWARD = 0.0
 HOLD_REWARD = 10.0
 PASS_SHOT_REWARD = 1000.0
+
+DISPLAY = True
 
 # randomness value
 epsilon = 0.01
 # learning rate
 alpha = 0.3
 
-pygame.init()
 fps = pygame.time.Clock()
-window = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
-pygame.display.set_caption("Soccer!")
+pygame.init()
+if DISPLAY:
+    window = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
+    pygame.display.set_caption("Soccer!")
 
 def initialize():
-    global goalie_pos, ball_pos, ball_vel, p1_passes, p2_passes
+    global goalie_pos, ball_pos, ball_vel, p1_num_passes, p2_num_passes
     # initialize goalie at goal with no velocity
     goalie_pos = GOAL_POS
     goalie_vel = [0, 0]
@@ -61,8 +64,8 @@ def initialize():
     ball_pos = PLAYER_ONE_POS
     ball_vel = [0, 0]
     # reset pass count
-    p1_passes = 0
-    p2_passes = 0
+    p1_num_passes = 0
+    p2_num_passes = 0
 
 def possession():
     # returns player position who is in possession of the ball
@@ -91,64 +94,56 @@ def ball_state():
     return None
 
 def dist(pos1, pos2):
-    return int(((pos2[0] - pos1[0])**2 + (pos2[1] - pos1[1])**2)**0.5)
+    return round(int(((pos2[0] - pos1[0])**2 + (pos2[1] - pos1[1])**2)**0.5), -1)
 
 def get_player_state(n = 1):
-    global PLAYER_ONE_POS, PLAYER_TWO_POS, p1_passes, p2_passes
+    global PLAYER_ONE_POS, PLAYER_TWO_POS, p1_num_passes, p2_num_passes
     pos = PLAYER_ONE_POS if n == 1 else PLAYER_TWO_POS
-    passes = p1_passes if n == 1 else p2_passes
+    passes = p1_num_passes if n == 1 else p2_num_passes
     return (
         ball_state() == ("player_" + str(n)), 
         dist(pos, goalie_pos),
         passes
         )
 
-def update_ball(passing, shooting, hold):
+def update_ball(__passing, __shooting, __hold):
     # update ball position
-    global ball_pos, ball_vel, goalie_pos, p1_passes, p2_passes
+    global ball_pos, ball_vel, goalie_pos, p1_num_passes, p2_num_passes, shooting, passing
     ball_pos[0] += int(ball_vel[0])
     ball_pos[1] += int(ball_vel[1])
 
     if update_goalie():
+        if p1_num_passes == 0 and p2_num_passes == 0:
+            return ('TERMINAL_STATE', FAIL_REWARD*3)
         return ('TERMINAL_STATE', FAIL_REWARD)
 
     d1 = dist(goalie_pos, PLAYER_ONE_POS)
     d2 = dist(goalie_pos, PLAYER_TWO_POS)
     player_states = get_player_state(n=1), get_player_state(n=2)
     # current player chooses to hold
-    if hold:
+    if __hold:
         return player_states, HOLD_REWARD
-        # if ball_state() == "player_1":
-        #     s1 = (True, d1, p1_passes)
-        #     s2 = (False, d2, p2_passes)
-        #     return (s1, s2) , HOLD_REWARD
-        # elif ball_state() == "player_2":
-        #     s1 = (False, d1, p1_passes)
-        #     s2 = (True, d2, p2_passes)
-        #     return (s1, s2) , HOLD_REWARD
 
-    if passing:
+    if __passing:
         if ball_pos == PLAYER_ONE_POS or ball_pos == PLAYER_TWO_POS:
             # if destination player is reached, set velocity to 0
             passing = False
             ball_vel = [0, 0]
             # must update passes
             if ball_pos == PLAYER_ONE_POS:
-                p2_passes += 1
-                s1 = (True, d1, p1_passes)
-                s2 = (False, d2, p2_passes)
+                s1 = (True, d1, p1_num_passes)
+                s2 = (False, d2, p2_num_passes)
                 return (s1, s2), PASS_REWARD
             # player two
-            p1_passes += 1
-            s1 = (False, d1, p1_passes)
-            s2 = (True, d2, p2_passes)
+            s1 = (False, d1, p1_num_passes)
+            s2 = (True, d2, p2_num_passes)
             return (s1, s2), PASS_REWARD
 
-    if shooting:
+    if __shooting:
         if abs(ball_pos[0] - GOAL_POS[0]) < BALL_RADIUS:
             # if ball reaches goal, set velocity to 0
             shooting = False
-            if p1_passes > 0 or p2_passes > 0:
+            if p1_num_passes > 0 or p2_num_passes > 0:
                 return 'TERMINAL_STATE', PASS_SHOT_REWARD
             # define successful goal reward
             return 'TERMINAL_STATE', GOAL_REWARD
@@ -156,16 +151,18 @@ def update_ball(passing, shooting, hold):
     return None
 
 def pass_action():
-    global ball_pos, ball_vel, passing
+    global ball_pos, ball_vel, passing, p1_num_passes, p2_num_passes
     # set passing variable
     passing = True
     epsilon = BALL_RADIUS
     if abs(ball_pos[1] - PLAYER_ONE_POS[1]) < epsilon:
         # if passing to player 2, set downward velocity
+        p1_num_passes += 1
         ball_vel = [0, BALL_SPEED]
         ball_pos = [ball_pos[0], ball_pos[1]+BALL_SPEED]
     if abs(ball_pos[1] - PLAYER_TWO_POS[1]) < epsilon:
         # if passing to player 1, set upward velocity
+        p2_num_passes += 1
         ball_vel = [0, -BALL_SPEED]
         ball_pos = [ball_pos[0], ball_pos[1]-BALL_SPEED]
 
@@ -258,23 +255,32 @@ def keydown(event):
 initialize()
 
 # execute until program is quit
-"""
-State definition for each player = (
-    <boolean> has possession,
-    <float>   distance from goalie
-)
-"""
 player1 = SoccerAgent(playerNum=1)
 player2 = SoccerAgent(playerNum=2)
-delay = 100
-last_tick = 0
 
-shots = 0
+plays = 0
 goals = 0
 previous_action = None
 
+# player states
+p1_shooting, p2_shooting = False, False
+p1_passing , p2_passing  = False, False
+epochs, N = 0, 30
+peek = None
+prev_state = (None, None)
+
+# file write
+file_name = "data_"
+for i in range(5):
+    # generate random output 
+    file_name += str(random.randint(0,9))
+file_name += ".txt"
+data_file = open(file_name, "w")
+
 while True:
-    draw(window)
+    # display
+    if DISPLAY:
+        draw(window)
     """BEGIN EPISODIC CODE"""
     # if key is pressed or game is exited
     for event in pygame.event.get():
@@ -282,30 +288,34 @@ while True:
             keydown(event)
         elif event.type == QUIT:
             quitgame()
+            # not necessary, but just in case
+            data_file.close()
     
-    # # time tracker
-    # tick = pygame.time.get_ticks()
-    # timedelta = tick - last_tick
-    # last_tick = tick
-
-    # if timedelta < delay:
-    #     pass
     s1, s2 = get_player_state(n=1), get_player_state(n=2)
     game_state = (s1, s2)
 
     # determine action
     action1 = player1.getAction(game_state[0])
     action2 = player2.getAction(game_state[1])
-    print(action1, action2)
+    
     action  = action1 if action1 != "wait" else action2
     hold = False
     # perform action 
     if possession() is not None:
         if action == "shoot":
             shoot_action()
-            shots += 1
-        elif action == "pass" and previous_action and previous_action != "shoot":
+            # player action states
+            if action1 == "shoot":
+                p1_shooting = True; p2_shooting = False
+            else:
+                p2_shooting = True; p1_shooting = False
+        elif action == "pass" and previous_action != "shoot":
             pass_action()
+            # player action states
+            if action1 == "pass":
+                p1_passing = True; p2_passing = False
+            else:
+                p2_passing = True; p1_passing = False
         else:
             hold = True
     
@@ -315,28 +325,45 @@ while True:
         # reset game, terminal state
         if step[0] == "TERMINAL_STATE":
             reward = step[1]
-            s1 = (False, dist(goalie_pos, PLAYER_ONE_POS), p1_passes)
-            s2 = (False, dist(goalie_pos, PLAYER_TWO_POS), p2_passes)
+            s1 = (False, dist(goalie_pos, PLAYER_ONE_POS), p1_num_passes)
+            s2 = (False, dist(goalie_pos, PLAYER_TWO_POS), p2_num_passes)
             next_state = (s1, s2)
-            player1.update(game_state[0], action1, next_state[0], reward)
-            player2.update(game_state[1], action2, next_state[1], reward)
-            if reward == GOAL_REWARD:
-                goals += 1
-            initialize()
-    #         pass
-    #     # continue
-    #     next_state, reward = step
-    # else:
-    #     next_state = game_state
-    #     reward = WAIT_REWARD
-    # """END EPISODIC CODE"""
-    
-    # # update
-    # try:
-    #     player1.update(game_state[0], action1, next_state[0], reward)
-    #     player2.update(game_state[1], action2, next_state[1], reward)
-    # except Exception as e:
-    #     print(game_state, action2, next_state, e)
 
-    pygame.display.update()
-    fps.tick(100)
+            if p1_shooting or p2_shooting:
+                action1 = "shoot" if p1_shooting else "wait"
+                action2 = "shoot" if p2_shooting else "wait"
+                p1_shooting, p2_shooting = False, False
+                assert action1 != action2, (action1, action2)
+            elif p1_passing or p2_passing:
+                action1 = "pass" if p1_passing else "wait"
+                action2 = "pass" if p2_passing else "wait"
+                p1_passing, p2_passing = False, False
+                assert action1 != action2, (action1, action2)
+
+            # update Q values
+            player1.update(prev_state[0], action1, game_state[0], reward)
+            player2.update(prev_state[1], action2, game_state[1], reward)
+            plays += 1
+            if reward == GOAL_REWARD or reward == PASS_SHOT_REWARD:
+                # write to file
+                data_file.write('1\n')
+                goals += 1
+            else:
+                # write to file
+                data_file.write('0\n')
+            epochs += 1
+            if epochs >= N:
+                # reset
+                epochs = 0
+                # print results
+                print("{0:.3f}".format(float(goals)/plays))
+            initialize()
+        # basic 'living' reward (keeping the ball alive)
+        else:
+            if peek != (p1_num_passes, p2_num_passes):
+                peek = (p1_num_passes, p2_num_passes)
+                prev_state = game_state
+
+    if DISPLAY:
+        pygame.display.update()
+    fps.tick(1000)
