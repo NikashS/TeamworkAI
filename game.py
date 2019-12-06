@@ -35,12 +35,12 @@ shooting = False
 p1_num_passes = 0
 p2_num_passes = 0
 
-PASS_REWARD = 50.0
-GOAL_REWARD = 500.0
-FAIL_REWARD = -500.0
+PASS_REWARD = 0.3
+GOAL_REWARD = 1.0
+FAIL_REWARD = -5.0
 WAIT_REWARD = 0.0
-HOLD_REWARD = 10.0
-PASS_SHOT_REWARD = 1000.0
+HOLD_REWARD = 0.1
+PASS_SHOT_REWARD = 5.0
 
 DISPLAY = True
 
@@ -266,17 +266,23 @@ previous_action = None
 # player states
 p1_shooting, p2_shooting = False, False
 p1_passing , p2_passing  = False, False
-epochs, Ns, currentN = 0, [5, 10, 25, 50, 100, 500], 0
+epochs, Ns, currentN = 0, [5000], 0
 peek = None
 prev_state = (None, None)
+write_to_file = False
 
 # file write
-file_name = "data_"
-for i in range(5):
-    # generate random output 
-    file_name += str(random.randint(0,9))
-file_name += ".txt"
-data_file = open(file_name, "w")
+if Ns[len(Ns)-1] > 300: # only for meaningful data...
+    file_name = "data_"
+    for i in range(5):
+        # generate random output 
+        file_name += str(random.randint(0,9))
+    file_name += ".txt"
+    data_file = open(file_name, "w")
+    print("Writing data to {0}".format(file_name))
+    write_to_file = True
+else:
+    print("Not enough epochs--data not being saved")
 
 while True:
     # display
@@ -347,22 +353,28 @@ while True:
             plays += 1
             if reward == GOAL_REWARD or reward == PASS_SHOT_REWARD:
                 # write to file
-                data_file.write('1\n')
+                if write_to_file:
+                    data_file.write('1\n')
                 goals += 1
             else:
                 # write to file
-                data_file.write('0\n')
+                if write_to_file:
+                    data_file.write('0\n')
             epochs += 1
-            if currentN == len(Ns):
-                quitgame()
             if epochs >= Ns[currentN]:
                 # reset
                 epochs = 0
-                currentN += 1
                 # print results
                 print(str(Ns[currentN]) + " epochs: {0:.3f}".format(float(goals)/plays))
                 goals = 0
                 plays = 0
+                currentN += 1
+                # terminate
+                if currentN >= len(Ns):
+                    quitgame()
+                # reset q values
+                player1.reset()
+                player2.reset()
             initialize()
         # basic 'living' reward (keeping the ball alive)
         else:
